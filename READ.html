@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Analysis App - Architecture & Run Guide</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #e2e8f0;
+            --accent: #38bdf8;
+            --muted: #94a3b8;
+            --code-bg: #334155;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem;
+            max-width: 900px;
+            margin-inline: auto;
+        }
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+        h2 {
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            color: var(--accent);
+            border-bottom: 1px solid var(--surface);
+            padding-bottom: 0.25rem;
+        }
+        p { margin: 0.5rem 0; color: var(--muted); }
+        ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+        li { margin: 0.25rem 0; }
+        code, pre {
+            background: var(--code-bg);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        pre code { padding: 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            border: 1px solid var(--surface);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        th { background: var(--surface); color: var(--accent); }
+        .caption { color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <h1>📊 Stock Analysis App</h1>
+    <p class="caption">Architecture overview and run guide</p>
+
+    <h2>Overview</h2>
+    <p>
+        Scalable stock analysis application with <strong>FastAPI</strong> backend and <strong>Streamlit</strong> frontend.
+        Computes annual return, volatility, Value at Risk (VaR), RSI, and MACD for a given ticker.
+    </p>
+
+    <h2>Architecture</h2>
+    <p>Layered design with clear separation of concerns:</p>
+    <pre><code>project_root/
+├── app/
+│   ├── main.py              # FastAPI app entry point
+│   ├── domain/
+│   │   ├── models.py        # StockMetrics, TickerRequest
+│   │   ├── entities.py      # StockPriceData
+│   │   └── interfaces.py    # IStockRepository, IStockAnalysisService
+│   ├── services/
+│   │   └── stock_analysis_service.py   # Business logic (metrics computation)
+│   ├── repositories/
+│   │   └── stock_repository.py        # Data fetching (Yahoo Finance)
+│   ├── api/
+│   │   └── routes.py       # REST endpoints
+│   └── utils/
+│       └── logger.py       # Logging (file + console)
+├── streamlit_app.py        # Frontend (input + display only)
+├── tests/
+│   ├── test_models.py
+│   ├── test_services.py
+│   └── test_api.py
+├── requirements.txt
+├── pyproject.toml
+└── README.md</code></pre>
+
+    <h2>Layer Responsibilities</h2>
+    <table>
+        <thead>
+            <tr><th>Layer</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><strong>Domain</strong></td><td>Models, entities, and interfaces (contracts)</td></tr>
+            <tr><td><strong>Repositories</strong></td><td>Fetch stock data from Yahoo Finance via yfinance</td></tr>
+            <tr><td><strong>Services</strong></td><td>Compute metrics: annual return, volatility, VaR, RSI, MACD</td></tr>
+            <tr><td><strong>API</strong></td><td>FastAPI routes exposing sync endpoints for single/batch analysis</td></tr>
+            <tr><td><strong>Frontend</strong></td><td>Streamlit UI for input and display; no business logic</td></tr>
+        </tbody>
+    </table>
+
+    <h2>How to Run</h2>
+
+    <h3>1. Install dependencies</h3>
+    <pre><code>cd project_root
+pip install -r requirements.txt</code></pre>
+
+    <h3>2. Start the FastAPI backend</h3>
+    <pre><code>uvicorn app.main:app --reload --host 0.0.0.0 --port 8000</code></pre>
+    <p>API runs at <code>http://localhost:8000</code>. Docs at <code>http://localhost:8000/docs</code>.</p>
+
+    <h3>3. Start the Streamlit frontend</h3>
+    <pre><code>streamlit run streamlit_app.py</code></pre>
+    <p>UI runs at <code>http://localhost:8501</code>. Enter a ticker and click Submit.</p>
+
+    <h3>4. Run tests</h3>
+    <pre><code>pytest tests/ -v</code></pre>
+
+    <h2>API Endpoints</h2>
+    <table>
+        <thead>
+            <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>GET</td><td><code>/health</code></td><td>Health check</td></tr>
+            <tr><td>GET</td><td><code>/api/v1/analyze/{ticker}</code></td><td>Analyze single ticker</td></tr>
+            <tr><td>POST</td><td><code>/api/v1/analyze/batch</code></td><td>Analyze multiple tickers</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Environment Variables</h2>
+    <table>
+        <thead>
+            <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>STOCK_API_URL</code></td><td>http://localhost:8000</td><td>API base URL for Streamlit</td></tr>
+            <tr><td><code>LOG_DIR</code></td><td>logs</td><td>Directory for log files</td></tr>
+            <tr><td><code>LOG_FILE</code></td><td>stock_analysis.log</td><td>Log filename</td></tr>
+        </tbody>
+    </table>
+</body>
+</html>

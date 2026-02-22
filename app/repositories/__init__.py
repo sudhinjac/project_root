@@ -1,0 +1,5 @@
+"""Repositories."""
+
+from app.repositories.stock_repository import StockRepository
+
+__all__ = ["StockRepository"]
