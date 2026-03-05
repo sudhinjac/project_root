@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Analysis App - Architecture & Run Guide</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #e2e8f0;
+            --accent: #38bdf8;
+            --muted: #94a3b8;
+            --code-bg: #334155;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem;
+            max-width: 900px;
+            margin-inline: auto;
+        }
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+        h2 {
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            color: var(--accent);
+            border-bottom: 1px solid var(--surface);
+            padding-bottom: 0.25rem;
+        }
+        h3 { font-size: 1.1rem; margin-top: 1.5rem; color: var(--muted); }
+        p { margin: 0.5rem 0; color: var(--muted); }
+        ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+        li { margin: 0.25rem 0; }
+        code, pre {
+            background: var(--code-bg);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        pre code { padding: 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            border: 1px solid var(--surface);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        th { background: var(--surface); color: var(--accent); }
+        .caption { color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; }
+        .flow-box { background: var(--surface); padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 0.85em; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>📊 Stock Analysis App</h1>
+    <p class="caption">Architecture overview, comprehensive dashboard, and run guide</p>
+
+    <h2>Overview</h2>
+    <p>
+        Scalable stock analysis application with <strong>FastAPI</strong> backend and <strong>Streamlit</strong> frontends.
+        Includes a <strong>Comprehensive Stock Analysis</strong> dashboard with financials (ROCE, ROE), technicals (CAGR, Sharpe, Monte Carlo, ARIMA, HMM), sentiment analysis, and AI perspective via Ollama/DeepSeek.
+    </p>
+
+    <h2>Architecture</h2>
+    <p>Layered design with dependency injection and repository pattern:</p>
+    <pre><code>project_root/
+├── app/
+│   ├── main.py                    # FastAPI app entry point
+│   ├── domain/
+│   │   ├── models.py              # StockMetrics, TickerRequest
+│   │   ├── entities.py            # StockPriceData, FinancialStatements, SentimentResult
+│   │   └── interfaces.py          # IStockRepository, IFinancialRepository, INewsRepository,
+│   │                              # IFinancialRatioService, ISentimentService, ILLMService
+│   ├── services/
+│   │   ├── stock_analysis_service.py      # Basic metrics (RSI, MACD, VaR)
+│   │   ├── financial_ratio_service.py     # ROCE, ROE, ROA, margins
+│   │   ├── technical_analysis_service.py  # CAGR, Monte Carlo, ARIMA, HMM, ML
+│   │   ├── sentiment_service.py          # VADER sentiment on news
+│   │   └── ollama_llm_service.py          # Ollama/DeepSeek company perspective
+│   ├── repositories/
+│   │   ├── stock_repository.py            # Yahoo Finance price data
+│   │   ├── financial_repository.py        # Balance sheet, P&L, cashflow
+│   │   └── news_repository.py             # Google News RSS
+│   ├── api/
+│   │   └── routes.py
+│   └── utils/
+│       └── logger.py
+├── streamlit_app.py               # Basic frontend (API-backed)
+├── streamlit_comprehensive.py     # Comprehensive dashboard (standalone)
+├── tests/
+│   ├── test_models.py
+│   ├── test_services.py
+│   ├── test_api.py
+│   ├── test_financial_service.py
+│   ├── test_technical_service.py
+│   └── test_sentiment_service.py
+├── requirements.txt
+└── README.md</code></pre>
+
+    <h2>Architecture Flow (Comprehensive App)</h2>
+    <div class="flow-box">User Input (Ticker, Company Name)
+    │
+    ├─► FinancialRatioService ─► YahooFinancialRepository (balance sheet, P&L, cashflow)
+    │   └─► ROCE, ROE, ROA, margins, Debt/Equity
+    │
+    ├─► TechnicalAnalysisService ─► StockRepository (Yahoo Finance price data)
+    │   └─► CAGR, Sharpe, Monte Carlo, ARIMA, Holt-Winters, HMM, ML prediction
+    │
+    ├─► SentimentService ─► GoogleNewsRepository (RSS headlines)
+    │   └─► VADER sentiment → Pie chart (Positive/Neutral/Negative)
+    │
+    └─► OllamaLLMService (optional)
+        └─► Aggregates financials, technicals, sentiment → Expert analyst perspective via DeepSeek</div>
+
+    <h2>Design Principles</h2>
+    <table>
+        <thead>
+            <tr><th>Principle</th><th>Implementation</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><strong>DRY</strong></td><td>Calculations from tech5.py and ALKYLAMINES.ipynb centralized in services</td></tr>
+            <tr><td><strong>Dependency Injection</strong></td><td>Services receive repositories via constructor</td></tr>
+            <tr><td><strong>Repository Pattern</strong></td><td>Data access abstracted behind interfaces</td></tr>
+            <tr><td><strong>Single Responsibility</strong></td><td>Each service handles one domain</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Comprehensive App Features</h2>
+    <table>
+        <thead>
+            <tr><th>Section</th><th>Content</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><strong>Fundamental</strong></td><td>P&L, Balance Sheet, Cash Flow (full tables); ROCE, ROE, ROA, margins, Debt/Equity</td></tr>
+            <tr><td><strong>Technical</strong></td><td>CAGR, Sharpe, Sortino, Max Drawdown, Calmar; Beta, Jensen's Alpha</td></tr>
+            <tr><td><strong>Signals</strong></td><td>RSI, MACD, Bollinger, ADX, Ichimoku; Buy/Hold/Sell decision</td></tr>
+            <tr><td><strong>Charts</strong></td><td>Candlestick + Bollinger + SMA + Volume; RSI; MACD</td></tr>
+            <tr><td><strong>Monte Carlo</strong></td><td>Price simulation; min/max/mean; 5th/95th percentiles</td></tr>
+            <tr><td><strong>Forecast</strong></td><td>ARIMA and Holt-Winters 30-day forecast</td></tr>
+            <tr><td><strong>HMM</strong></td><td>Regime detection (Bull/Bear)</td></tr>
+            <tr><td><strong>ML</strong></td><td>Logistic regression bullish/bearish probability</td></tr>
+            <tr><td><strong>Sentiment</strong></td><td>News headlines; Positive/Neutral/Negative pie chart</td></tr>
+            <tr><td><strong>AI</strong></td><td>Ollama DeepSeek expert financial analyst perspective (optional); receives full financial data</td></tr>
+        </tbody>
+    </table>
+
+    <h2>How to Run</h2>
+
+    <h3>1. Install dependencies</h3>
+    <pre><code>cd project_root
+pip install -r requirements.txt</code></pre>
+
+    <h3>2. Run Comprehensive Streamlit App</h3>
+    <pre><code>streamlit run streamlit_comprehensive.py</code></pre>
+    <p>UI runs at <code>http://localhost:8501</code>. Enter ticker (e.g. AAPL, ALKYLAMINE.NS) and company name for news.</p>
+
+    <h3>3. (Optional) Ollama for AI Perspective</h3>
+    <pre><code># Install Ollama from https://ollama.ai
+ollama pull deepseek</code></pre>
+    <p>Check "Get AI Perspective" in the sidebar to enable.</p>
+
+    <h3>4. (Optional) Basic App with FastAPI backend</h3>
+    <pre><code>uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+streamlit run streamlit_app.py</code></pre>
+
+    <h3>5. Run tests</h3>
+    <pre><code>pytest tests/ -v</code></pre>
+
+    <h2>API Endpoints (Basic App)</h2>
+    <table>
+        <thead>
+            <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>GET</td><td><code>/health</code></td><td>Health check</td></tr>
+            <tr><td>GET</td><td><code>/api/v1/analyze/{ticker}</code></td><td>Analyze single ticker</td></tr>
+            <tr><td>GET</td><td><code>/api/v1/analyze/{ticker}/indicators</code></td><td>RSI & MACD time series</td></tr>
+            <tr><td>POST</td><td><code>/api/v1/analyze/batch</code></td><td>Analyze multiple tickers</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Dependencies</h2>
+    <p>Core: FastAPI, Uvicorn, Streamlit, Plotly, Pandas, NumPy, SciPy, yfinance, requests, httpx.</p>
+    <p>Comprehensive app: feedparser, nltk, statsmodels, scikit-learn, hmmlearn, ollama, beautifulsoup4, matplotlib, vaderSentiment.</p>
+    <p>See <code>requirements.txt</code> for versions.</p>
+
+    <h2>Environment Variables</h2>
+    <table>
+        <thead>
+            <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>STOCK_API_URL</code></td><td>http://localhost:8000</td><td>API base URL for basic Streamlit</td></tr>
+            <tr><td><code>OLLAMA_MODEL</code></td><td>deepseek</td><td>Ollama model for AI perspective</td></tr>
+            <tr><td><code>LOG_DIR</code></td><td>logs</td><td>Directory for log files</td></tr>
+        </tbody>
+    </table>
+
+    <h2>References</h2>
+    <ul>
+        <li><code>tech5.py</code>: Technical indicators, Monte Carlo, ARIMA, HMM, sentiment, ML prediction</li>
+        <li><code>ALKYLAMINES.ipynb</code>: CAGR, volatility, Sharpe, Sortino, max drawdown, Calmar, beta, Monte Carlo</li>
+    </ul>
+</body>
+</html>

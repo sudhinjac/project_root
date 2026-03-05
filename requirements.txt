@@ -2,6 +2,7 @@
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
 streamlit>=1.29.0
+plotly>=5.18.0
 requests>=2.31.0
 pandas>=2.0.0
 numpy>=1.24.0
@@ -9,3 +10,17 @@ scipy>=1.11.0
 yfinance>=0.2.36
 pytest>=7.4.0
 httpx>=0.26.0
+
+# Comprehensive Stock Analysis (streamlit_comprehensive.py)
+feedparser>=6.0.0
+nltk>=3.8.0
+statsmodels>=0.14.0
+scikit-learn>=1.3.0
+hmmlearn>=0.3.0
+ollama>=0.3.0
+
+# Additional packages from reference implementation
+beautifulsoup4>=4.12.0
+matplotlib>=3.7.0
+vaderSentiment>=3.3.2
+# cufflinks>=0.17.0  # Optional: pandas 2.0+ compatibility issues; app uses plotly directly

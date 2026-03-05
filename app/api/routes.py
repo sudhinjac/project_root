@@ -40,6 +40,25 @@ def analyze_ticker(ticker: str) -> dict:
     return result
 
 
+@router.get("/analyze/{ticker}/indicators")
+def get_indicators(ticker: str) -> dict:
+    """
+    Get RSI and MACD time series for charting.
+    Returns dates, rsi, macd, macd_signal, macd_histogram.
+    """
+    ticker = ticker.strip().upper()
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker cannot be empty")
+
+    result = _stock_service.get_indicator_series(ticker)
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No indicator data for ticker: {ticker}",
+        )
+    return result
+
+
 @router.post("/analyze/batch")
 def analyze_batch(req: BatchRequest) -> dict:
     """
