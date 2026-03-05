@@ -15,3 +15,41 @@
 2026-03-05 14:28:59,430 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (739) does not match length of index (740)
 2026-03-05 14:29:36,717 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (739) does not match length of index (740)
 2026-03-05 14:29:37,683 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (739) does not match length of index (740)
+2026-03-05 14:41:44,398 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (751) does not match length of index (752)
+2026-03-05 14:41:45,772 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (751) does not match length of index (752)
+2026-03-05 14:42:05,889 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (598) does not match length of index (599)
+2026-03-05 14:42:06,647 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (598) does not match length of index (599)
+2026-03-05 14:42:12,531 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (598) does not match length of index (599)
+2026-03-05 14:42:12,757 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (598) does not match length of index (599)
+2026-03-05 14:42:13,765 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (598) does not match length of index (599)
+2026-03-05 14:42:14,264 - app.services.technical_analysis_service - ERROR - Error computing stock metrics for DIAMINESQ.NS: Cannot set a DataFrame with multiple columns to the single column ^NSEI
+Traceback (most recent call last):
+  File "/mnt/d/STREAMLIT/project_root/app/services/technical_analysis_service.py", line 123, in get_stock_metrics
+    data[benchmark] = bench_data.data["Close"]
+    ~~~~^^^^^^^^^^^
+  File "/home/sudhin/.local/lib/python3.12/site-packages/pandas/core/frame.py", line 4301, in __setitem__
+    self._set_item_frame_value(key, value)
+  File "/home/sudhin/.local/lib/python3.12/site-packages/pandas/core/frame.py", line 4459, in _set_item_frame_value
+    raise ValueError(
+ValueError: Cannot set a DataFrame with multiple columns to the single column ^NSEI
+2026-03-05 14:42:14,432 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (598) does not match length of index (599)
+2026-03-05 15:12:22,142 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (751) does not match length of index (752)
+2026-03-05 15:12:23,392 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (751) does not match length of index (752)
+2026-03-05 15:12:30,053 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (598) does not match length of index (599)
+2026-03-05 15:12:35,758 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (598) does not match length of index (599)
+2026-03-05 15:12:36,015 - app.services.technical_analysis_service - ERROR - Error computing stock metrics for DIAMINESQ.NS: Cannot set a DataFrame with multiple columns to the single column ^NSEI
+Traceback (most recent call last):
+  File "/mnt/d/STREAMLIt/project_root/app/services/technical_analysis_service.py", line 123, in get_stock_metrics
+    data[benchmark] = bench_data.data["Close"]
+    ~~~~^^^^^^^^^^^
+  File "/home/sudhin/.local/lib/python3.12/site-packages/pandas/core/frame.py", line 4301, in __setitem__
+    self._set_item_frame_value(key, value)
+  File "/home/sudhin/.local/lib/python3.12/site-packages/pandas/core/frame.py", line 4459, in _set_item_frame_value
+    raise ValueError(
+ValueError: Cannot set a DataFrame with multiple columns to the single column ^NSEI
+2026-03-05 15:12:36,167 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (598) does not match length of index (599)
+2026-03-05 15:12:38,633 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (598) does not match length of index (599)
+2026-03-05 15:17:02,070 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (739) does not match length of index (740)
+2026-03-05 15:17:04,460 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (739) does not match length of index (740)
+2026-03-05 15:17:08,782 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (739) does not match length of index (740)
+2026-03-05 15:17:10,977 - app.services.technical_analysis_service - WARNING - HMM failed: Length of values (739) does not match length of index (740)

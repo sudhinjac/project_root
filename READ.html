@@ -74,7 +74,7 @@
     <h2>Overview</h2>
     <p>
         Scalable stock analysis application with <strong>FastAPI</strong> backend and <strong>Streamlit</strong> frontends.
-        Basic app: annual return, volatility, VaR, RSI, MACD. Comprehensive app: financials (P&L, Balance Sheet, Cash Flow), technicals (CAGR, Sharpe, Monte Carlo, ARIMA, HMM), sentiment, and AI analyst perspective.
+        Basic app: annual return, volatility, VaR, RSI, MACD. Comprehensive app: financials (P&L, Balance Sheet, Cash Flow), key metrics (ROE, ROCE, Debt/Equity, Altman Z, Piotroski, CAGR, Sharpe, Odds), sentiment, AI analysis (BUY/HOLD/SELL), annual report (SEC 10-K for US), news updates.
     </p>
 
     <h2>Architecture</h2>
@@ -88,14 +88,15 @@
 │   │   └── interfaces.py          # IStockRepository, IFinancialRepository, INewsRepository, etc.
 │   ├── services/
 │   │   ├── stock_analysis_service.py      # Basic metrics (RSI, MACD, VaR)
-│   │   ├── financial_ratio_service.py    # ROCE, ROE, ROA, margins
+│   │   ├── financial_ratio_service.py    # ROCE, ROE, Altman Z, Piotroski, EV
 │   │   ├── technical_analysis_service.py # CAGR, Monte Carlo, ARIMA, HMM, ML
 │   │   ├── sentiment_service.py          # VADER sentiment on news
 │   │   └── ollama_llm_service.py          # Ollama/DeepSeek analyst perspective
 │   ├── repositories/
 │   │   ├── stock_repository.py            # Yahoo Finance price data
-│   │   ├── financial_repository.py       # Balance sheet, P&L, cashflow
-│   │   └── news_repository.py            # Google News RSS
+│   │   ├── financial_repository.py        # Balance sheet, P&L, cashflow
+│   │   ├── news_repository.py             # Google News RSS
+│   │   └── annual_report_repository.py    # SEC 10-K (US tickers)
 │   ├── api/
 │   │   └── routes.py
 │   └── utils/
@@ -119,7 +120,7 @@
         </thead>
         <tbody>
             <tr><td><strong>Domain</strong></td><td>Models, entities, and interfaces (contracts)</td></tr>
-            <tr><td><strong>Repositories</strong></td><td>Yahoo Finance (price, financials, statements); Google News RSS</td></tr>
+            <tr><td><strong>Repositories</strong></td><td>Yahoo Finance (price, financials); Google News RSS; SEC EDGAR (annual report for US)</td></tr>
             <tr><td><strong>Services</strong></td><td>Financial ratios, technical analysis, sentiment, AI analyst (Ollama)</td></tr>
             <tr><td><strong>API</strong></td><td>FastAPI routes for single/batch analysis</td></tr>
             <tr><td><strong>Frontend</strong></td><td>Streamlit: basic (API-backed) or comprehensive (standalone)</td></tr>
@@ -146,7 +147,7 @@ pip install -r requirements.txt</code></pre>
 
     <h3>4. (Optional) Comprehensive Streamlit App</h3>
     <pre><code>streamlit run streamlit_comprehensive.py</code></pre>
-    <p>Full dashboard: financials (P&L, Balance Sheet, Cash Flow tables), technicals, sentiment pie chart, AI analyst (Ollama DeepSeek).</p>
+    <p>Full dashboard: financials, key metrics (ROE, ROCE, Debt/Equity, Altman Z, Piotroski, CAGR, Sharpe, Odds), sentiment, AI (BUY/HOLD/SELL), annual report (US), news updates.</p>
 
     <h3>5. Run tests</h3>
     <pre><code>pytest tests/ -v</code></pre>

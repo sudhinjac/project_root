@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
 
+from app.repositories.annual_report_repository import get_annual_report_summary
 from app.repositories.financial_repository import YahooFinancialRepository
 from app.repositories.news_repository import GoogleNewsRepository
 from app.repositories.stock_repository import StockRepository
@@ -40,6 +41,50 @@ def _render_metrics_table(metrics: dict, title: str = "Metrics") -> None:
     st.dataframe(df, use_container_width=True, hide_index=True)
 
 
+def _format_metric_value(v) -> str:
+    """Format metric for display."""
+    if v is None:
+        return "N/A"
+    if isinstance(v, (int, float)) and abs(v) >= 1e9:
+        return f"{v/1e9:.2f}B"
+    if isinstance(v, float):
+        return f"{v:.4f}" if abs(v) < 0.01 or abs(v) > 1000 else f"{v:.2f}"
+    return str(v)
+
+
+def _build_unified_metrics_table(ticker: str, analysis: Optional[dict]) -> list[tuple[str, str]]:
+    """Build combined metrics table: Debt/Equity, Current Ratio, EV, Altman Z, Piotroski, ROE, ROCE, CAGR, Volatility, Drawdown, Sharpe, Odds."""
+    rows = []
+    fin_result = _financial_service.compute_ratios(ticker)
+    if fin_result:
+        ratios = fin_result.get("ratios", {})
+        for k in ["ROE (%)", "ROCE (%)", "Debt/Equity", "Current Ratio", "Enterprise Value", "Altman Z-Score", "Piotroski F-Score"]:
+            if k in ratios:
+                rows.append((k, _format_metric_value(ratios[k])))
+    if analysis:
+        pm = analysis.get("price_metrics", {})
+        sm = analysis.get("stock_metrics", {})
+        for k in ["CAGR (%)", "Volatility (%)", "Max Drawdown (%)"]:
+            if k in pm:
+                rows.append((k, _format_metric_value(pm[k])))
+        sharpe = pm.get("Sharpe Ratio") if pm else None
+        if sharpe is None and sm:
+            sharpe = sm.get("sharpe_ratio")
+        if sharpe is not None:
+            rows.append(("Sharpe Ratio", _format_metric_value(sharpe)))
+        if sm:
+            pw = sm.get("profit_probability_pct")
+            pl = sm.get("loss_probability_pct")
+            ow = sm.get("odds_of_profit")
+            if pw is not None:
+                rows.append(("Odds of Winning (%)", _format_metric_value(pw)))
+            if pl is not None:
+                rows.append(("Odds of Losing (%)", _format_metric_value(pl)))
+            if ow is not None and ow != float("inf") and ow > 0:
+                rows.append(("Odds of Profit", _format_metric_value(ow)))
+    return rows
+
+
 def _render_financial_section(ticker: str) -> None:
     """Financial statements and ratios - P&L, Balance Sheet, Cash Flow in tables."""
     result = _financial_service.compute_ratios(ticker)
@@ -49,8 +94,8 @@ def _render_financial_section(ticker: str) -> None:
 
     ratios = result.get("ratios", {})
     if ratios:
-        st.subheader("📊 Financial Ratios (ROCE, ROE, etc.)")
-        ratio_rows = [(k, v if v is None else f"{v:.2f}") for k, v in ratios.items()]
+        st.subheader("📊 Financial Ratios")
+        ratio_rows = [(k, _format_metric_value(v)) for k, v in ratios.items()]
         st.dataframe(pd.DataFrame(ratio_rows, columns=["Ratio", "Value"]), use_container_width=True, hide_index=True)
 
     st.subheader("📋 Profit & Loss Statement")
@@ -130,7 +175,13 @@ def _render_technical_section(ticker: str) -> None:
     if df is None or df.empty:
         return
 
-    # Metrics tables
+    # Unified Key Metrics Table (Debt/Equity, Current Ratio, EV, Altman Z, Piotroski, ROE, ROCE, CAGR, Volatility, Drawdown, Sharpe, Odds)
+    unified = _build_unified_metrics_table(ticker, analysis)
+    if unified:
+        st.subheader("📊 Key Metrics (Ratios, Returns, Risk)")
+        st.dataframe(pd.DataFrame(unified, columns=["Metric", "Value"]), use_container_width=True, hide_index=True)
+
+    # Detailed metrics
     col1, col2 = st.columns(2)
     with col1:
         if analysis.get("price_metrics"):
@@ -332,14 +383,24 @@ def main() -> None:
 
         st.divider()
 
-        # 4. AI Perspective (Ollama review)
+        # 4. AI Perspective (Ollama review) - uses financials, technicals, sentiment, news, annual report
         if use_ollama:
             st.header("🤖 AI Company Perspective (Ollama DeepSeek)")
-            with st.spinner("Generating AI analysis..."):
+            with st.spinner("Generating comprehensive AI analysis (financials, news, annual report)..."):
                 fin_sum = _build_financial_summary(ticker)
                 tech_sum = _build_technical_summary(analysis)
                 sent_sum = _build_sentiment_summary(company_query)
-                perspective = _llm_service.get_company_perspective(ticker, fin_sum, tech_sum, sent_sum)
+                news_txt = "\n".join(f"- {h}" for h in (headlines or [])[:15])
+                ar_summary = ""
+                try:
+                    ar_summary = get_annual_report_summary(ticker) or ""
+                except Exception:
+                    pass
+                perspective = _llm_service.get_company_perspective(
+                    ticker, fin_sum, tech_sum, sent_sum,
+                    news_headlines=news_txt,
+                    annual_report_summary=ar_summary,
+                )
             if perspective:
                 st.markdown(perspective)
             else:

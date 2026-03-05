@@ -26,6 +26,8 @@ class OllamaLLMService(ILLMService):
         financial_summary: str,
         technical_summary: str,
         sentiment_summary: str,
+        news_headlines: str = "",
+        annual_report_summary: str = "",
     ) -> Optional[str]:
         """
         Get AI-generated company perspective from aggregated data.
@@ -35,6 +37,8 @@ class OllamaLLMService(ILLMService):
             financial_summary: Summary of financial ratios and statements.
             technical_summary: Summary of technical metrics and signals.
             sentiment_summary: Summary of news sentiment.
+            news_headlines: Latest company news headlines.
+            annual_report_summary: Extracted text from annual report (10-K).
 
         Returns:
             AI-generated analysis text or None if Ollama unavailable.
@@ -43,24 +47,52 @@ class OllamaLLMService(ILLMService):
             logger.warning("Ollama not installed. pip install ollama")
             return None
 
-        prompt = f"""You are an expert financial analyst. Analyze the following data for {ticker} and provide a professional investment perspective (3-5 paragraphs). Act as a senior financial analyst would when advising a client.
+        extra_sections = []
+        if news_headlines:
+            extra_sections.append(f"Latest Company News:\n{news_headlines}")
+        if annual_report_summary:
+            extra_sections.append(f"Annual Report (10-K) Excerpt:\n{annual_report_summary[:12000]}")
 
-Focus on:
-1. Financial health: ROCE, ROE, margins, balance sheet strength, cash flow
-2. Technical outlook: momentum, risk metrics (Sharpe, Sortino, drawdown), signals
-3. Sentiment and market perception from news
-4. Overall recommendation: Buy / Hold / Sell with clear rationale
+        extra = "\n\n".join(extra_sections) if extra_sections else ""
 
-Financial Data (P&L, Balance Sheet, Cash Flow, Ratios):
+        prompt = f"""You are an expert financial analyst. Analyze ALL the following data for {ticker} and provide a COMPREHENSIVE investment report. Your report MUST include these sections:
+
+## 1. RECOMMENDATION (Required)
+Clearly state: **BUY** / **HOLD** / **SELL** with a one-sentence rationale.
+
+## 2. FINANCIAL POSITION
+- Is the company profitable or making a loss? (cite net income, margins)
+- Balance sheet strength (debt/equity, current ratio, Altman Z-Score)
+- Cash flow health
+- Piotroski F-Score interpretation (0-3 weak, 4-6 average, 7-9 strong)
+
+## 3. FUTURE PROSPECTS
+- Growth potential based on financials and annual report
+- Key risks from balance sheet and sentiment
+- Management discussion highlights if from annual report
+
+## 4. TECHNICAL & RISK METRICS
+- CAGR, volatility, drawdown, Sharpe ratio
+- Odds of winning vs losing
+- Trade signals summary
+
+## 5. SENTIMENT & NEWS
+- Market perception from news
+- Key headlines impact
+
+---
+
+Financial Data (Ratios: ROE, ROCE, Debt/Equity, Current Ratio, Enterprise Value, Altman Z, Piotroski; P&L, Balance Sheet, Cash Flow):
 {financial_summary}
 
-Technical Analysis:
+Technical Analysis (CAGR, Return, Volatility, Drawdown, Sharpe, Odds of Winning/Losing):
 {technical_summary}
 
 Sentiment:
 {sentiment_summary}
+{chr(10) + extra if extra else ""}
 
-Provide a balanced, professional analysis suitable for an investment decision."""
+Provide a balanced, professional analysis. Be specific. Use the data provided."""
 
         try:
             response = ollama_chat(model=self._model, messages=[{"role": "user", "content": prompt}])

@@ -91,14 +91,15 @@
 │   │                              # IFinancialRatioService, ISentimentService, ILLMService
 │   ├── services/
 │   │   ├── stock_analysis_service.py      # Basic metrics (RSI, MACD, VaR)
-│   │   ├── financial_ratio_service.py     # ROCE, ROE, ROA, margins
+│   │   ├── financial_ratio_service.py     # ROCE, ROE, Altman Z, Piotroski, EV
 │   │   ├── technical_analysis_service.py  # CAGR, Monte Carlo, ARIMA, HMM, ML
 │   │   ├── sentiment_service.py          # VADER sentiment on news
 │   │   └── ollama_llm_service.py          # Ollama/DeepSeek company perspective
 │   ├── repositories/
 │   │   ├── stock_repository.py            # Yahoo Finance price data
 │   │   ├── financial_repository.py        # Balance sheet, P&L, cashflow
-│   │   └── news_repository.py             # Google News RSS
+│   │   ├── news_repository.py             # Google News RSS
+│   │   └── annual_report_repository.py    # SEC 10-K (US tickers)
 │   ├── api/
 │   │   └── routes.py
 │   └── utils/
@@ -128,7 +129,7 @@
     │   └─► VADER sentiment → Pie chart (Positive/Neutral/Negative)
     │
     └─► OllamaLLMService (optional)
-        └─► Aggregates financials, technicals, sentiment → Expert analyst perspective via DeepSeek</div>
+        └─► Aggregates financials, news, annual report → BUY/HOLD/SELL analysis via DeepSeek</div>
 
     <h2>Design Principles</h2>
     <table>
@@ -149,7 +150,8 @@
             <tr><th>Section</th><th>Content</th></tr>
         </thead>
         <tbody>
-            <tr><td><strong>Fundamental</strong></td><td>P&L, Balance Sheet, Cash Flow (full tables); ROCE, ROE, ROA, margins, Debt/Equity</td></tr>
+            <tr><td><strong>Fundamental</strong></td><td>P&L, Balance Sheet, Cash Flow; ROE, ROCE, Debt/Equity, Current Ratio, Enterprise Value, Altman Z-Score, Piotroski F-Score</td></tr>
+            <tr><td><strong>Key Metrics</strong></td><td>Unified table: ratios + CAGR, Volatility, Drawdown, Sharpe; Odds of Winning/Losing</td></tr>
             <tr><td><strong>Technical</strong></td><td>CAGR, Sharpe, Sortino, Max Drawdown, Calmar; Beta, Jensen's Alpha</td></tr>
             <tr><td><strong>Signals</strong></td><td>RSI, MACD, Bollinger, ADX, Ichimoku; Buy/Hold/Sell decision</td></tr>
             <tr><td><strong>Charts</strong></td><td>Candlestick + Bollinger + SMA + Volume; RSI; MACD</td></tr>
@@ -158,9 +160,13 @@
             <tr><td><strong>HMM</strong></td><td>Regime detection (Bull/Bear)</td></tr>
             <tr><td><strong>ML</strong></td><td>Logistic regression bullish/bearish probability</td></tr>
             <tr><td><strong>Sentiment</strong></td><td>News headlines; Positive/Neutral/Negative pie chart</td></tr>
-            <tr><td><strong>AI</strong></td><td>Ollama DeepSeek expert financial analyst perspective (optional); receives full financial data</td></tr>
+            <tr><td><strong>AI</strong></td><td>Ollama DeepSeek: BUY/HOLD/SELL, financial position, profit/loss, future prospects; receives financials, news, annual report (SEC 10-K for US)</td></tr>
+            <tr><td><strong>News Updates</strong></td><td>Latest headlines shown last, after AI review</td></tr>
         </tbody>
     </table>
+
+    <h2>Display Order</h2>
+    <p>Fundamental → Technical → Sentiment → AI (Ollama) → News Updates (last)</p>
 
     <h2>How to Run</h2>
 
@@ -170,7 +176,7 @@ pip install -r requirements.txt</code></pre>
 
     <h3>2. Run Comprehensive Streamlit App</h3>
     <pre><code>streamlit run streamlit_comprehensive.py</code></pre>
-    <p>UI runs at <code>http://localhost:8501</code>. Enter ticker (e.g. AAPL, ALKYLAMINE.NS) and company name for news.</p>
+    <p>UI runs at <code>http://localhost:8501</code>. Enter ticker (e.g. AAPL, MSFT, ALKYLAMINE.NS) and company name for news. Annual report (10-K) fetched from SEC for US tickers.</p>
 
     <h3>3. (Optional) Ollama for AI Perspective</h3>
     <pre><code># Install Ollama from https://ollama.ai

@@ -16,14 +16,15 @@ project_root/
 │   │                              # ISentimentService, ILLMService
 │   ├── services/
 │   │   ├── stock_analysis_service.py      # Basic metrics (RSI, MACD, VaR)
-│   │   ├── financial_ratio_service.py     # ROCE, ROE, ROA, margins, ratios
+│   │   ├── financial_ratio_service.py     # ROCE, ROE, Altman Z, Piotroski, EV, ratios
 │   │   ├── technical_analysis_service.py # CAGR, Sharpe, Monte Carlo, ARIMA, HMM, ML
 │   │   ├── sentiment_service.py          # VADER sentiment on news
 │   │   └── ollama_llm_service.py         # Ollama/DeepSeek company perspective
 │   ├── repositories/
 │   │   ├── stock_repository.py            # Yahoo Finance price data
 │   │   ├── financial_repository.py        # Balance sheet, P&L, cashflow
-│   │   └── news_repository.py             # Google News RSS
+│   │   ├── news_repository.py             # Google News RSS
+│   │   └── annual_report_repository.py    # SEC 10-K (US tickers)
 │   ├── api/
 │   │   └── routes.py
 │   └── utils/
@@ -75,8 +76,9 @@ project_root/
                         │ OllamaLLMService        │
                         │ (DeepSeek via Ollama)    │
                         │                          │
-                        │ Aggregates all data →    │
-                        │ AI company perspective  │
+                        │ Aggregates financials,  │
+                        │ news, annual report →   │
+                        │ BUY/HOLD/SELL analysis  │
                         └─────────────────────────┘
 ```
 
@@ -86,6 +88,14 @@ project_root/
 - **Dependency Injection**: Services receive repositories via constructor
 - **Repository Pattern**: Data access abstracted behind interfaces
 - **Single Responsibility**: Each service handles one domain (financial, technical, sentiment, LLM)
+
+## Display Order (Comprehensive App)
+
+1. Fundamental Analysis (P&L, Balance Sheet, Cash Flow, ratios)
+2. Technical Analysis (key metrics table, charts, Monte Carlo, forecast, HMM)
+3. Sentiment Analysis (pie chart)
+4. AI Company Perspective (Ollama) — BUY/HOLD/SELL, financial position, future prospects
+5. News Updates (latest headlines, shown last)
 
 ## Quick Start
 
@@ -121,7 +131,8 @@ Set `OLLAMA_MODEL=deepseek` if using a different model name.
 
 | Section | Content |
 |---------|---------|
-| **Fundamental** | P&L, Balance Sheet, Cash Flow (full tables); ROCE, ROE, ROA, margins, Debt/Equity, Current Ratio |
+| **Fundamental** | P&L, Balance Sheet, Cash Flow (full tables); ROE, ROCE, Debt/Equity, Current Ratio, Enterprise Value, Altman Z-Score, Piotroski F-Score |
+| **Key Metrics** | Unified table: ROE, ROCE, Debt/Equity, Current Ratio, EV, Altman Z, Piotroski; CAGR, Volatility, Drawdown, Sharpe; Odds of Winning/Losing |
 | **Technical** | CAGR, Volatility, Sharpe, Sortino, Max Drawdown, Calmar; Beta, Jensen's Alpha, Treynor |
 | **Signals** | RSI, MACD, Bollinger, ADX, Ichimoku; Buy/Hold/Sell decision |
 | **Charts** | Candlestick + Bollinger + SMA + Volume; RSI; MACD |
@@ -130,7 +141,8 @@ Set `OLLAMA_MODEL=deepseek` if using a different model name.
 | **HMM** | Regime detection (Bull/Bear) |
 | **ML** | Logistic regression bullish/bearish probability |
 | **Sentiment** | News headlines; Positive/Neutral/Negative pie chart |
-| **AI** | Ollama DeepSeek expert financial analyst perspective (optional); receives full financial data |
+| **AI** | Ollama DeepSeek comprehensive analysis (optional): BUY/HOLD/SELL, financial position, profit/loss, future prospects; receives financials, news, annual report (SEC 10-K for US) |
+| **News Updates** | Latest headlines shown last, after AI review |
 
 ## API Endpoints (Basic App)
 
