@@ -294,15 +294,49 @@ def _render_technical_section(ticker: str, analysis: Optional[dict] = None) -> N
         st.info(f"**Current Regime:** {curr} | Suggested: {'BUY' if curr == 0 else 'SELL'}")
 
 
-def _format_statement_for_llm(df: pd.DataFrame, name: str, max_chars: int = 6000) -> str:
-    """Format full financial statement as text for LLM."""
+def _fmt_num(v) -> str:
+    """Format number for LLM display."""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return "N/A"
+    if isinstance(v, (int, float)):
+        if abs(v) >= 1:
+            return f"{v:,.0f}"
+        return f"{v:.4f}"
+    return str(v)
+
+
+def _format_statement_for_llm(df: pd.DataFrame, name: str, max_chars: int = 8000) -> str:
+    """Format financial statement with CURRENT vs PRIOR YEAR for YoY comparison.
+    Quarterly (4 cols): col 0 vs col 3 = same quarter prior year. Annual: col 0 vs col 1."""
     if df is None or df.empty:
         return ""
-    lines = [f"\n=== {name} (Full) ==="]
+    ncols = len(df.columns)
+    if ncols == 0:
+        return ""
+    # Detect quarterly vs annual by date gap: col0-col1 ~3mo = quarterly, ~12mo = annual
+    prior_col = 1
+    if ncols >= 4:
+        try:
+            d0 = pd.to_datetime(df.columns[0], errors="coerce")
+            d1 = pd.to_datetime(df.columns[1], errors="coerce")
+            if pd.notna(d0) and pd.notna(d1):
+                months = abs((d0.year - d1.year) * 12 + (d0.month - d1.month))
+                prior_col = 3 if months <= 4 else 1  # quarterly: use col3 for YoY
+        except Exception:
+            prior_col = 1
+    period0 = str(df.columns[0])[:16] if ncols > 0 else "Current"
+    period1 = str(df.columns[prior_col])[:16] if ncols > prior_col else "Prior Year"
+    lines = [f"\n=== {name} (Current vs Prior Year Comparison) ==="]
+    lines.append(f"  Periods: {period0} (Current) | {period1} (Prior Year)")
+    lines.append("")
     for idx, row in df.iterrows():
-        val = row.iloc[0] if len(row) > 0 else None
-        if pd.notna(val) and str(val).strip():
-            lines.append(f"  {idx}: {val}")
+        v0 = row.iloc[0] if ncols > 0 else None
+        v1 = row.iloc[prior_col] if ncols > prior_col else None
+        if pd.notna(v0) or pd.notna(v1):
+            lines.append(f"  {idx}:")
+            lines.append(f"    Current ({period0}): {_fmt_num(v0)}")
+            if ncols > prior_col:
+                lines.append(f"    Prior Year ({period1}): {_fmt_num(v1)}")
     text = "\n".join(lines)
     return text[:max_chars] + ("..." if len(text) > max_chars else "")
 

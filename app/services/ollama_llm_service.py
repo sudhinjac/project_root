@@ -72,6 +72,7 @@ Clearly state: **BUY** / **HOLD** / **SELL** with a one-sentence rationale.
 - Debt maturity profile if visible from balance sheet
 
 ## 3. CASH FLOW GROWTH & QUALITY
+- Compare Current vs Prior Year (year-over-year)
 - Operating cash flow trend (growth or decline)
 - Free cash flow, capex intensity
 - Cash flow vs net income (quality of earnings)
@@ -88,8 +89,9 @@ Clearly state: **BUY** / **HOLD** / **SELL** with a one-sentence rationale.
 - Fraud or regulatory concerns
 - Related party transactions if mentioned
 
-## 6. OVERALL FINANCIAL HEALTH
-- Is the company profitable or making a loss?
+## 6. OVERALL FINANCIAL HEALTH (use Current vs Prior Year data)
+- Is the company profitable or making a loss? (cite Current period)
+- Year-over-year comparison: revenue growth, net income trend, margin changes
 - How is the company doing vs peers?
 - Key strengths and weaknesses
 
@@ -104,7 +106,7 @@ Clearly state: **BUY** / **HOLD** / **SELL** with a one-sentence rationale.
 
 ---
 
-FULL FINANCIAL DATA (P&L, Balance Sheet, Cash Flow - use ALL line items for your analysis):
+FULL FINANCIAL DATA - Current vs Prior Year (compare both periods for YoY insights):
 {financial_summary}
 
 Technical Analysis:
