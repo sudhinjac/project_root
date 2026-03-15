@@ -23,4 +23,6 @@ ollama>=0.3.0
 beautifulsoup4>=4.12.0
 matplotlib>=3.7.0
 vaderSentiment>=3.3.2
+duckduckgo-search>=4.0.0
+xhtml2pdf>=0.2.13
 # cufflinks>=0.17.0  # Optional: pandas 2.0+ compatibility issues; app uses plotly directly

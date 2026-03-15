@@ -72,6 +72,7 @@ class ILLMService(ABC):
         sentiment_summary: str,
         news_headlines: str = "",
         annual_report_summary: str = "",
+        web_search_context: str = "",
     ) -> Optional[str]:
         """Get AI-generated company perspective from aggregated data."""
         pass

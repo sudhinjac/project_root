@@ -15,6 +15,8 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 from app.repositories.annual_report_repository import get_annual_report_summary
+from app.utils.report_builder import build_html_report, html_to_pdf
+from app.utils.web_search import search_company_intelligence
 from app.repositories.financial_repository import YahooFinancialRepository
 from app.repositories.news_repository import GoogleNewsRepository
 from app.repositories.stock_repository import StockRepository
@@ -85,12 +87,13 @@ def _build_unified_metrics_table(ticker: str, analysis: Optional[dict]) -> list[
     return rows
 
 
-def _render_financial_section(ticker: str) -> None:
-    """Financial statements and ratios - P&L, Balance Sheet, Cash Flow in tables."""
-    result = _financial_service.compute_ratios(ticker)
+def _render_financial_section(ticker: str, result: Optional[dict] = None) -> Optional[dict]:
+    """Financial statements and ratios - P&L, Balance Sheet, Cash Flow in tables. Returns result for report."""
+    if result is None:
+        result = _financial_service.compute_ratios(ticker)
     if not result:
         st.warning("Financial data not available for this ticker.")
-        return
+        return None
 
     ratios = result.get("ratios", {})
     if ratios:
@@ -118,14 +121,16 @@ def _render_financial_section(ticker: str) -> None:
         st.dataframe(cf, use_container_width=True)
     else:
         st.info("No cash flow data available.")
+    return result
 
 
-def _render_sentiment_pie(company_query: str):
-    """Sentiment analysis with pie chart. Returns headlines for news section."""
-    result = _sentiment_service.analyze(company_query)
+def _render_sentiment_pie(company_query: str, result=None):
+    """Sentiment analysis with pie chart. Returns (headlines, result) for news and report."""
+    if result is None:
+        result = _sentiment_service.analyze(company_query)
     if not result or result.total == 0:
         st.warning("No sentiment data available.")
-        return []
+        return [], result
 
     cleaned = {k: v for k, v in [
         ("Positive", result.positive),
@@ -135,7 +140,7 @@ def _render_sentiment_pie(company_query: str):
 
     if not cleaned:
         st.warning("Not enough sentiment data to plot.")
-        return result.headlines if result else []
+        return (result.headlines if result else []), result
 
     fig = go.Figure(data=[go.Pie(
         labels=list(cleaned.keys()),
@@ -150,7 +155,7 @@ def _render_sentiment_pie(company_query: str):
         margin=dict(t=50, b=50),
     )
     st.plotly_chart(fig, use_container_width=True)
-    return result.headlines
+    return result.headlines, result
 
 
 def _render_news_updates(company_query: str, headlines: list[str]) -> None:
@@ -164,9 +169,10 @@ def _render_news_updates(company_query: str, headlines: list[str]) -> None:
         st.write(f"**{i}.** {h}")
 
 
-def _render_technical_section(ticker: str) -> None:
+def _render_technical_section(ticker: str, analysis: Optional[dict] = None) -> None:
     """Technical analysis: metrics, charts, Monte Carlo, forecast, HMM."""
-    analysis = _technical_service.get_full_analysis(ticker)
+    if analysis is None:
+        analysis = _technical_service.get_full_analysis(ticker)
     if not analysis:
         st.error("Insufficient price data for technical analysis.")
         return
@@ -288,25 +294,37 @@ def _render_technical_section(ticker: str) -> None:
         st.info(f"**Current Regime:** {curr} | Suggested: {'BUY' if curr == 0 else 'SELL'}")
 
 
+def _format_statement_for_llm(df: pd.DataFrame, name: str, max_chars: int = 6000) -> str:
+    """Format full financial statement as text for LLM."""
+    if df is None or df.empty:
+        return ""
+    lines = [f"\n=== {name} (Full) ==="]
+    for idx, row in df.iterrows():
+        val = row.iloc[0] if len(row) > 0 else None
+        if pd.notna(val) and str(val).strip():
+            lines.append(f"  {idx}: {val}")
+    text = "\n".join(lines)
+    return text[:max_chars] + ("..." if len(text) > max_chars else "")
+
+
 def _build_financial_summary(ticker: str) -> str:
-    """Build text summary of financials for LLM (ratios + key line items from statements)."""
+    """Build text summary for LLM: ratios + FULL P&L, Balance Sheet, Cash Flow."""
     result = _financial_service.compute_ratios(ticker)
     if not result:
         return "No financial data available."
     parts = []
     ratios = result.get("ratios", {})
     if ratios:
-        parts.append("Ratios: " + ", ".join(f"{k}={v}" for k, v in ratios.items() if v is not None))
+        parts.append("=== Financial Ratios ===")
+        parts.append("\n".join(f"  {k}: {v}" for k, v in ratios.items() if v is not None))
     for name, df in [
-        ("P&L", result.get("income_statement")),
+        ("Profit & Loss (Income Statement)", result.get("income_statement")),
         ("Balance Sheet", result.get("balance_sheet")),
-        ("Cash Flow", result.get("cashflow")),
+        ("Cash Flow Statement", result.get("cashflow")),
     ]:
-        if df is not None and not df.empty:
-            col0 = df.iloc[:, 0]
-            items = [f"{idx}: {val}" for idx, val in col0.head(8).items() if pd.notna(val)]
-            if items:
-                parts.append(f"{name} (key items): " + "; ".join(items))
+        stmt = _format_statement_for_llm(df, name)
+        if stmt:
+            parts.append(stmt)
     return "\n\n".join(parts) if parts else "No financial data."
 
 
@@ -355,6 +373,7 @@ def main() -> None:
     ticker = st.sidebar.text_input("Ticker Symbol", value="AAPL", placeholder="e.g. AAPL, MSFT, ALKYLAMINE.NS")
     company_name = st.sidebar.text_input("Company Name (for news/sentiment)", value="", placeholder="e.g. Apple Inc")
     use_ollama = st.sidebar.checkbox("Get AI Perspective (Ollama DeepSeek)", value=False)
+    use_web_search = st.sidebar.checkbox("Include web search (promoter red flags, company intelligence)", value=True)
 
     ticker = ticker.strip().upper() if ticker else ""
     company_query = company_name.strip() or ticker
@@ -363,53 +382,120 @@ def main() -> None:
         st.info("Enter a ticker symbol to begin.")
         return
 
-    with st.spinner("Loading analysis..."):
-        # 1. Financial section
+    # Cache: avoid re-running when user clicks download (Streamlit re-runs on any interaction)
+    cache = st.session_state.get("analysis_cache", {})
+    cache_key = (ticker, company_query, use_ollama)
+    use_cache = (
+        cache.get("key") == cache_key
+        and cache.get("fin_result") is not None
+        and cache.get("analysis") is not None
+    )
+
+    if use_cache:
+        fin_result = cache["fin_result"]
+        analysis = cache["analysis"]
+        sentiment_result = cache["sentiment_result"]
+        headlines = cache["headlines"]
+        perspective = cache.get("perspective", "")
+    else:
+        with st.spinner("Loading analysis..."):
+            fin_result = _financial_service.compute_ratios(ticker)
+            analysis = _technical_service.get_full_analysis(ticker)
+            sentiment_result = _sentiment_service.analyze(company_query)
+            headlines = (sentiment_result.headlines if sentiment_result else []) or []
+        perspective = ""
         st.header("🏦 Fundamental Analysis")
-        _render_financial_section(ticker)
+        _render_financial_section(ticker, fin_result)
 
         st.divider()
 
         # 2. Technical section
         st.header("📊 Technical Analysis")
-        analysis = _technical_service.get_full_analysis(ticker)
-        _render_technical_section(ticker)
+        _render_technical_section(ticker, analysis)
 
         st.divider()
 
         # 3. Sentiment section (pie chart only)
         st.header("📊 Sentiment Analysis")
-        headlines = _render_sentiment_pie(company_query)
+        headlines, _ = _render_sentiment_pie(company_query, sentiment_result)
 
         st.divider()
 
-        # 4. AI Perspective (Ollama review) - uses financials, technicals, sentiment, news, annual report
+        # 4. AI Perspective (Ollama review) - only run when not cached
         if use_ollama:
             st.header("🤖 AI Company Perspective (Ollama DeepSeek)")
-            with st.spinner("Generating comprehensive AI analysis (financials, news, annual report)..."):
-                fin_sum = _build_financial_summary(ticker)
-                tech_sum = _build_technical_summary(analysis)
-                sent_sum = _build_sentiment_summary(company_query)
-                news_txt = "\n".join(f"- {h}" for h in (headlines or [])[:15])
-                ar_summary = ""
-                try:
-                    ar_summary = get_annual_report_summary(ticker) or ""
-                except Exception:
-                    pass
-                perspective = _llm_service.get_company_perspective(
-                    ticker, fin_sum, tech_sum, sent_sum,
-                    news_headlines=news_txt,
-                    annual_report_summary=ar_summary,
-                )
-            if perspective:
+            if use_cache and perspective:
                 st.markdown(perspective)
             else:
-                st.warning("Ollama/DeepSeek not available. Install ollama and run: ollama pull deepseek")
+                with st.spinner("Generating comprehensive AI analysis (full financials, news, annual report, web search)..."):
+                    fin_sum = _build_financial_summary(ticker)
+                    tech_sum = _build_technical_summary(analysis)
+                    sent_sum = _build_sentiment_summary(company_query)
+                    news_txt = "\n".join(f"- {h}" for h in (headlines or [])[:15])
+                    ar_summary = ""
+                    try:
+                        ar_summary = get_annual_report_summary(ticker) or ""
+                    except Exception:
+                        pass
+                    web_ctx = ""
+                    if use_web_search:
+                        try:
+                            web_ctx = search_company_intelligence(company_query, ticker)
+                        except Exception:
+                            pass
+                    perspective = _llm_service.get_company_perspective(
+                        ticker, fin_sum, tech_sum, sent_sum,
+                        news_headlines=news_txt,
+                        annual_report_summary=ar_summary,
+                        web_search_context=web_ctx,
+                    )
+                if perspective:
+                    st.markdown(perspective)
+                else:
+                    st.warning("Ollama/DeepSeek not available. Install ollama and run: ollama pull deepseek")
+
+        # Store in cache so download button does not re-trigger computation
+        st.session_state["analysis_cache"] = {
+            "key": (ticker, company_query, use_ollama),
+            "fin_result": fin_result,
+            "analysis": analysis,
+            "sentiment_result": sentiment_result,
+            "headlines": headlines or [],
+            "perspective": perspective,
+        }
 
         st.divider()
 
         # 5. News Updates (last - after Ollama review)
         _render_news_updates(company_query, headlines or [])
+
+        # 6. Save Report (HTML / PDF)
+        st.divider()
+        st.header("💾 Save Report")
+        st.caption("Download the analysis to view later without re-running the app")
+        html_content = build_html_report(
+            ticker, company_query, fin_result, analysis, sentiment_result,
+            headlines or [], perspective,
+        )
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                label="📄 Download HTML",
+                data=html_content,
+                file_name=f"stock_analysis_{ticker}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.html",
+                mime="text/html",
+            )
+        with col2:
+            pdf_bytes = html_to_pdf(html_content)
+            if pdf_bytes:
+                st.download_button(
+                    label="📕 Download PDF",
+                    data=pdf_bytes,
+                    file_name=f"stock_analysis_{ticker}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.pdf",
+                    mime="application/pdf",
+                )
+            else:
+                st.caption("PDF requires: pip install xhtml2pdf")
 
 
 if __name__ == "__main__":

@@ -28,17 +28,19 @@ class OllamaLLMService(ILLMService):
         sentiment_summary: str,
         news_headlines: str = "",
         annual_report_summary: str = "",
+        web_search_context: str = "",
     ) -> Optional[str]:
         """
         Get AI-generated company perspective from aggregated data.
 
         Args:
             ticker: Stock ticker.
-            financial_summary: Summary of financial ratios and statements.
-            technical_summary: Summary of technical metrics and signals.
-            sentiment_summary: Summary of news sentiment.
+            financial_summary: Full P&L, Balance Sheet, Cash Flow + ratios.
+            technical_summary: Technical metrics and signals.
+            sentiment_summary: News sentiment.
             news_headlines: Latest company news headlines.
             annual_report_summary: Extracted text from annual report (10-K).
+            web_search_context: Web search results (promoter red flags, etc.).
 
         Returns:
             AI-generated analysis text or None if Ollama unavailable.
@@ -52,47 +54,67 @@ class OllamaLLMService(ILLMService):
             extra_sections.append(f"Latest Company News:\n{news_headlines}")
         if annual_report_summary:
             extra_sections.append(f"Annual Report (10-K) Excerpt:\n{annual_report_summary[:12000]}")
+        if web_search_context:
+            extra_sections.append(f"Web Search (Promoter/Company Intelligence):\n{web_search_context[:4000]}")
 
         extra = "\n\n".join(extra_sections) if extra_sections else ""
 
-        prompt = f"""You are an expert financial analyst. Analyze ALL the following data for {ticker} and provide a COMPREHENSIVE investment report. Your report MUST include these sections:
+        prompt = f"""You are a senior financial advisor providing HIGH-GRADE INTELLIGENCE for investment decisions. Analyze ALL the following data for {ticker} and provide a comprehensive report. Act as a top-tier analyst would when advising institutional clients.
+
+Your report MUST include these sections:
 
 ## 1. RECOMMENDATION (Required)
 Clearly state: **BUY** / **HOLD** / **SELL** with a one-sentence rationale.
 
-## 2. FINANCIAL POSITION
-- Is the company profitable or making a loss? (cite net income, margins)
-- Balance sheet strength (debt/equity, current ratio, Altman Z-Score)
-- Cash flow health
-- Piotroski F-Score interpretation (0-3 weak, 4-6 average, 7-9 strong)
+## 2. DEBT & LEVERAGE ANALYSIS
+- Total debt, debt/equity ratio, interest coverage
+- Is the company overleveraged or underleveraged?
+- Debt maturity profile if visible from balance sheet
 
-## 3. FUTURE PROSPECTS
-- Growth potential based on financials and annual report
-- Key risks from balance sheet and sentiment
-- Management discussion highlights if from annual report
+## 3. CASH FLOW GROWTH & QUALITY
+- Operating cash flow trend (growth or decline)
+- Free cash flow, capex intensity
+- Cash flow vs net income (quality of earnings)
+- Working capital changes
 
-## 4. TECHNICAL & RISK METRICS
-- CAGR, volatility, drawdown, Sharpe ratio
+## 4. BALANCE SHEET STRENGTH
+- Current ratio, quick ratio
+- Asset quality, receivables, inventory
+- Altman Z-Score interpretation (bankruptcy risk)
+- Piotroski F-Score (0-3 weak, 4-6 average, 7-9 strong)
+
+## 5. PROMOTER & RED FLAGS
+- Any red flags on promoters from web search (pledging, insider selling, governance issues)
+- Fraud or regulatory concerns
+- Related party transactions if mentioned
+
+## 6. OVERALL FINANCIAL HEALTH
+- Is the company profitable or making a loss?
+- How is the company doing vs peers?
+- Key strengths and weaknesses
+
+## 7. TECHNICAL & RISK
+- CAGR, volatility, drawdown, Sharpe
 - Odds of winning vs losing
-- Trade signals summary
+- Trade signals
 
-## 5. SENTIMENT & NEWS
-- Market perception from news
+## 8. SENTIMENT & NEWS
+- Market perception
 - Key headlines impact
 
 ---
 
-Financial Data (Ratios: ROE, ROCE, Debt/Equity, Current Ratio, Enterprise Value, Altman Z, Piotroski; P&L, Balance Sheet, Cash Flow):
+FULL FINANCIAL DATA (P&L, Balance Sheet, Cash Flow - use ALL line items for your analysis):
 {financial_summary}
 
-Technical Analysis (CAGR, Return, Volatility, Drawdown, Sharpe, Odds of Winning/Losing):
+Technical Analysis:
 {technical_summary}
 
 Sentiment:
 {sentiment_summary}
 {chr(10) + extra if extra else ""}
 
-Provide a balanced, professional analysis. Be specific. Use the data provided."""
+Provide a balanced, professional, high-grade analysis. Be specific. Cite numbers from the financial statements. Flag any red flags."""
 
         try:
             response = ollama_chat(model=self._model, messages=[{"role": "user", "content": prompt}])
